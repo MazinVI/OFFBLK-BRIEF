@@ -287,7 +287,14 @@ html[dir=rtl] .rr svg{transform:scaleX(-1)}
 .done-grid{display:grid;gap:22px}
 @media (min-width:720px){.done-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}}
 .done .print-box{max-width:420px}
-.actions{display:grid;gap:10px}
+.actions{display:grid;gap:12px}
+.sendstate{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;padding:14px 16px;border:1px solid var(--line-2);font-size:14px;font-weight:600;border-radius:2px}
+.sendstate .dot{width:8px;height:8px;border-radius:50%;background:var(--chrome);flex:0 0 8px}
+.sendstate[data-s=sending] .dot,.sendstate[data-s=idle] .dot{animation:pulse 1s ease-in-out infinite}
+.sendstate[data-s=sent]{border-color:var(--bone)}
+.sendstate[data-s=sent] .dot{background:#7FD69B}
+.sendstate[data-s=fail]{border-color:#E8B4A0;color:#E8B4A0;font-weight:500}
+@keyframes pulse{50%{opacity:.25}}
 .note{font-size:13px;color:var(--bone-3);margin:-2px 0 4px}
 .mailrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:14px;color:var(--bone-2);padding-top:12px;border-top:1px solid var(--line-2)}
 .mailrow code{font-family:inherit;font-weight:600;color:var(--bone);user-select:all;overflow-wrap:anywhere}
@@ -374,7 +381,8 @@ html[dir=rtl] .arr{transform:scaleX(-1)}
 <script>
 /* ---------- OFFBLK Discovery Brief: content (EN / AR) ---------- */
 const WA_NUMBER = "96894299707";
-const MAIL = "harthimazin@gmail.com";
+const MAIL = "hello@offblk.studio";
+const SEND_TO = "https://formsubmit.co/ajax/mazin@offblk.studio";
 
 const CH = [
   { en: "You", ar: "أنت" },
@@ -689,7 +697,8 @@ const T = {
     extra: "Anything else we should know?", extraPh: "Links, ideas, worries, dreams. All welcome.",
     skipped: "Skipped", send: "Finish and send",
     doneTitle: "That's a wrap, {name}.", doneTitleNo: "That's a wrap.",
-    doneSub: "Your Brand Print is ready. Send your brief to OFFBLK and we'll take it from here.",
+    doneSub: "Your Brand Print is ready and your brief is on its way to OFFBLK. We'll be in touch soon.",
+    sending: "Sending your brief to OFFBLK", sent: "Brief sent to OFFBLK", sendFail: "We couldn't send your brief. Check your connection and try again.", retry: "Try again",
     wa: "Send on WhatsApp", waNote: "Opens WhatsApp with your answers ready. Just press send.",
     copy: "Copy answers", copied: "Copied to clipboard",
     copyFail: "Copying is blocked here. Your answers are selected below, copy them manually.",
@@ -730,7 +739,8 @@ const T = {
     extra: "هل هناك شيء آخر يجب أن نعرفه؟", extraPh: "روابط، أفكار، مخاوف، أحلام. كلها مرحّب بها.",
     skipped: "تم التخطي", send: "إنهاء وإرسال",
     doneTitle: "انتهينا، {name}.", doneTitleNo: "انتهينا.",
-    doneSub: "بصمة علامتك جاهزة. أرسل ملخّصك إلى OFFBLK وسنتولى الباقي.",
+    doneSub: "بصمة علامتك جاهزة، وملخّصك في طريقه إلى OFFBLK. سنتواصل معك قريبًا.",
+    sending: "جارٍ إرسال ملخّصك إلى OFFBLK", sent: "تم إرسال الملخّص إلى OFFBLK", sendFail: "تعذّر إرسال الملخّص. تحقق من الاتصال وحاول مرة أخرى.", retry: "حاول مرة أخرى",
     wa: "أرسل عبر واتساب", waNote: "يفتح واتساب وإجاباتك جاهزة. اضغط إرسال فقط.",
     copy: "نسخ الإجابات", copied: "تم النسخ",
     copyFail: "النسخ غير متاح هنا. إجاباتك محددة في الأسفل، انسخها يدويًا.",
@@ -1108,18 +1118,42 @@ function vRecap() {
 
 function vDone() {
   var l = L(), name = firstName();
-  var wa = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(briefText());
   return '<div class="screen done"><div class="eyebrow lbl"><span>' + l.eyebrow + '</span><span class="rule"></span><span>' + esc(brandName()) + '</span></div>' +
     '<h1 class="qt">' + (name ? esc(fmt(l.doneTitle, { name: name })) : l.doneTitleNo) + '</h1><p class="qh">' + l.doneSub + '</p>' +
     '<div class="done-grid"><div><div class="print-box"><canvas id="donePrint"></canvas></div></div><div class="actions">' +
-    '<a class="btn btn-chrome" id="waBtn" href="' + esc(wa) + '" target="_blank" rel="noopener">' + I.chat + '<span>' + l.wa + '</span></a>' +
-    '<p class="note">' + l.waNote + '</p>' +
-    '<button type="button" class="btn" data-act="copy">' + I.copy + '<span>' + l.copy + '</span></button>' +
-    '<button type="button" class="btn" data-act="pdf" id="pdfBtn"' + (downloads ? "" : " hidden") + '>' + I.doc + '<span>' + l.pdf + '</span></button>' +
-    '<textarea class="fallback" id="fallback" readonly hidden aria-label="' + esc(l.copy) + '">' + esc(briefText()) + '</textarea>' +
-    '<div class="mailrow"><span>' + l.mail + '</span><code>' + MAIL + '</code><button type="button" class="linkbtn" data-act="copymail">' + l.copyMail + '</button></div>' +
+    '<div class="sendstate" id="sendState" data-s="' + sendState + '" role="status">' + sendLabel() + '</div>' +
+    '<button type="button" class="btn btn-primary" data-act="pdf" id="pdfBtn"' + (downloads ? "" : " hidden") + '>' + I.doc + '<span>' + l.pdf + '</span></button>' +
     '<div><button type="button" class="linkbtn" data-act="edit">' + l.edit + '</button></div>' +
     '</div></div></div>';
+}
+
+/* ---------- auto send to the studio inbox ---------- */
+var sendState = "idle", sentKey = "";
+function sendLabel() {
+  var l = L();
+  if (sendState === "sent") return '<span class="dot"></span>' + l.sent;
+  if (sendState === "fail") return '<span>' + l.sendFail + '</span><button type="button" class="linkbtn" data-act="resend">' + l.retry + '</button>';
+  return '<span class="dot"></span>' + l.sending;
+}
+function setSend(st) { sendState = st; var el = $("#sendState"); if (el) { el.dataset.s = st; el.innerHTML = sendLabel(); } }
+function emailFields() {
+  var keep = S.lang; S.lang = "en";
+  var f = { _subject: "New discovery brief: " + brandName() + (S.a.name ? " (" + S.a.name + ")" : ""), _template: "table", _captcha: "false" };
+  questions().forEach(function (q) { f[tx(q.s)] = summary(q) || "Skipped"; });
+  if (S.a.extra) f["Anything else"] = S.a.extra;
+  f["Answered in"] = keep === "ar" ? "Arabic" : "English";
+  f["Sent"] = new Date().toLocaleString("en-GB", { timeZone: "Asia/Muscat", dateStyle: "medium", timeStyle: "short" }) + " Muscat time";
+  S.lang = keep;
+  return f;
+}
+function sendBrief(force) {
+  var f = emailFields(), key = JSON.stringify(S.a);
+  if (!force && key === sentKey && sendState === "sent") return;
+  setSend("sending");
+  fetch(SEND_TO, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(f) })
+    .then(function (r) { return r.json().then(function (j) { if (!r.ok || String(j.success) === "false") throw new Error("send"); }); })
+    .then(function () { sentKey = key; setSend("sent"); try { localStorage.setItem(STORE + "-sent", key); } catch (e) {} },
+          function () { setSend("fail"); });
 }
 
 /* ---------- render ---------- */
@@ -1209,6 +1243,7 @@ function after(id, anim) {
     blinkT = setInterval(function () { if (bm && document.visibilityState === "visible") blink(bm); }, 4200);
   }
   if (id === "done") {
+    sendBrief(false);
     if (!celebrated) { celebrated = true; setTimeout(confetti, 250); setTimeout(function () { blink($("#hdrMark")); }, 900); }
   }
 }
@@ -1310,6 +1345,7 @@ function act(a, el) {
       p.then(function () { toast(l.mailCopied); }, function () { selectText($(".mailrow code")); });
       break;
     case "pdf": makePDF(); break;
+    case "resend": sendBrief(true); break;
   }
 }
 function selectText(node) {
@@ -1350,7 +1386,6 @@ function bindEvents() {
     }
     if (d.rm) { var list = (S.a[d.rm] || []).slice(); list.splice(+d.i, 1); S.a[d.rm] = list; render(false); return; }
     if (d.add) { addTag(d.add); return; }
-    if (el.id === "waBtn") { setTimeout(function () { toast(L().waNote); }, 300); }
   });
   stage.addEventListener("input", function (e) {
     var t = e.target, k = t.dataset && t.dataset.k;
@@ -1683,6 +1718,7 @@ function makePDF() {
 /* ---------- boot ---------- */
 function boot(data) {
   load();
+  try { sentKey = localStorage.getItem(STORE + "-sent") || ""; if (sentKey && sentKey === JSON.stringify(S.a)) sendState = "sent"; } catch (e) {}
   if (data && data.a) { S.a = data.a; S.lang = data.lang || S.lang; S.at = data.at || S.at; S.last = data.last || S.last; }
   applyLang(); bindEvents(); render(false);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedulePrint);
